@@ -1,7 +1,8 @@
 {
   "name": "Barbershop Termini",
   "short_name": "Termini",
-  "start_url": ".",
+  "start_url": "/Barbershop/",
+  "scope": "/Barbershop/",
   "display": "standalone",
   "background_color": "#0b1220",
   "theme_color": "#111827",

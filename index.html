@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="sr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#111827" />
+  <title>Barbershop Termini</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <style>
+    :root { --bg:#0b1220; --card:#111827; --muted:#9ca3af; --text:#f9fafb; --accent:#22c55e; --danger:#ef4444; --line:#1f2937; }
+    *{ box-sizing:border-box; }
+    body{ margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:linear-gradient(180deg,#060b16, #0b1220); color:var(--text); }
+    header{ position:sticky; top:0; background:rgba(6,11,22,.85); backdrop-filter: blur(10px); border-bottom:1px solid var(--line); padding:14px 16px; z-index:10;}
+    header .row{ display:flex; align-items:center; justify-content:space-between; gap:12px;}
+    h1{ font-size:16px; margin:0; letter-spacing:.2px;}
+    .btn{ border:1px solid var(--line); background:var(--card); color:var(--text); padding:10px 12px; border-radius:12px; font-weight:600; cursor:pointer; }
+    .btn.primary{ background:var(--accent); border-color:transparent; color:#052e13;}
+    .btn.ghost{ background:transparent; }
+    main{ padding:14px 16px 80px; max-width:720px; margin:0 auto; }
+    .controls{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:10px 0 14px;}
+    input, select{ background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:12px; padding:10px 12px; font-size:14px; outline:none; }
+    input::placeholder{ color: #6b7280; }
+    .list{ display:flex; flex-direction:column; gap:10px; }
+    .card{ background:rgba(17,24,39,.9); border:1px solid var(--line); border-radius:16px; padding:12px; }
+    .card .top{ display:flex; justify-content:space-between; gap:10px; align-items:flex-start;}
+    .name{ font-weight:800; font-size:15px; }
+    .meta{ color:var(--muted); font-size:12px; line-height:1.2; }
+    .svc{ margin-top:6px; display:inline-flex; gap:8px; flex-wrap:wrap; }
+    .pill{ font-size:12px; border:1px solid var(--line); padding:6px 10px; border-radius:999px; color:var(--text); background:rgba(31,41,55,.6);}
+    .pill.accent{ border-color: rgba(34,197,94,.5); background: rgba(34,197,94,.12);}
+    .actions{ display:flex; gap:8px; }
+    .btn.small{ padding:8px 10px; border-radius:12px; font-size:13px;}
+    .btn.danger{ background:transparent; border-color: rgba(239,68,68,.35); color:#fecaca;}
+    .empty{ color:var(--muted); text-align:center; padding:18px 10px; border:1px dashed var(--line); border-radius:16px; }
+    /* modal */
+    .modalWrap{ position:fixed; inset:0; display:none; align-items:flex-end; justify-content:center; background: rgba(0,0,0,.45); padding:14px; z-index:50;}
+    .modal{ width:min(720px, 100%); background: #0b1220; border:1px solid var(--line); border-radius:18px; padding:14px;}
+    .modal h2{ font-size:15px; margin:0 0 10px;}
+    .grid{ display:grid; grid-template-columns: 1fr; gap:10px;}
+    .row2{ display:grid; grid-template-columns: 1fr 1fr; gap:10px;}
+    .serviceButtons{ display:flex; gap:10px; flex-wrap:wrap; }
+    .sbtn{ flex:1; min-width: 140px; }
+    .hint{ color:var(--muted); font-size:12px; margin-top:6px;}
+    .footerBar{ position:fixed; inset:auto 0 0 0; border-top:1px solid var(--line); background:rgba(6,11,22,.85); backdrop-filter: blur(10px); padding:10px 16px; display:flex; justify-content:center; z-index:40;}
+    .footerBar .inner{ width:min(720px,100%); display:flex; gap:10px; justify-content:space-between; align-items:center;}
+    .toast{ position:fixed; left:50%; transform:translateX(-50%); bottom:78px; background:#111827; border:1px solid var(--line); padding:10px 12px; border-radius:14px; color:var(--text); display:none; z-index:60; font-size:13px;}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="row">
+      <h1>💈 Barbershop Termini</h1>
+      <button class="btn primary" id="openAdd">+ Novi termin</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="controls">
+      <label class="meta" for="day">Dan:</label>
+      <input id="day" type="date" />
+      <button class="btn" id="today">Danas</button>
+      <button class="btn ghost" id="export">Export</button>
+      <button class="btn ghost" id="import">Import</button>
+      <input id="importFile" type="file" accept="application/json" style="display:none"/>
+    </div>
+
+    <div id="list" class="list"></div>
+    <div id="empty" class="empty" style="display:none">Nema termina za izabrani dan.</div>
+  </main>
+
+  <div class="footerBar">
+    <div class="inner">
+      <div class="meta" id="count">0 termina</div>
+      <button class="btn primary" id="openAdd2">+ Novi termin</button>
+    </div>
+  </div>
+
+  <div class="modalWrap" id="modalWrap" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="row" style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+        <h2 id="modalTitle">Novi termin</h2>
+        <button class="btn small ghost" id="closeModal">Zatvori</button>
+      </div>
+
+      <div class="grid">
+        <div>
+          <div class="meta">Ime</div>
+          <input id="inpName" placeholder="Ime klijenta" />
+        </div>
+
+        <div class="row2">
+          <div>
+            <div class="meta">Datum</div>
+            <input id="inpDate" type="date" />
+          </div>
+          <div>
+            <div class="meta">Vrijeme početka</div>
+            <input id="inpTime" type="time" step="900"/>
+          </div>
+        </div>
+
+        <div>
+          <div class="meta">Usluga</div>
+          <div class="serviceButtons">
+            <button class="btn sbtn" data-svc="Šišanje" data-min="30">Šišanje (30)</button>
+            <button class="btn sbtn" data-svc="Brada" data-min="15">Brada (15)</button>
+            <button class="btn sbtn" data-svc="Šišanje + Brada" data-min="45">Oboje (45)</button>
+          </div>
+          <div class="hint" id="svcHint">Izaberi uslugu.</div>
+        </div>
+
+        <div>
+          <div class="meta">Napomena (opciono)</div>
+          <input id="inpNote" placeholder="Napomena" />
+        </div>
+
+        <div class="row" style="display:flex; justify-content:space-between; gap:10px; align-items:center;">
+          <div class="meta" id="calc">Kraj: —</div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn danger" id="deleteBtn" style="display:none">Obriši</button>
+            <button class="btn primary" id="saveBtn">Sačuvaj</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+  const LS_KEY = "barber_pwa_appointments_v1";
+
+  function loadAll(){
+    try { return JSON.parse(localStorage.getItem(LS_KEY) || "[]"); } catch { return []; }
+  }
+  function saveAll(items){
+    localStorage.setItem(LS_KEY, JSON.stringify(items));
+  }
+  function uid(){
+    return Math.random().toString(16).slice(2) + Date.now().toString(16);
+  }
+  function pad(n){ return String(n).padStart(2,"0"); }
+  function toISODate(d){
+    return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+  }
+  function parseDateTime(dateStr, timeStr){
+    // local time
+    const [y,m,da] = dateStr.split("-").map(Number);
+    const [hh,mm] = timeStr.split(":").map(Number);
+    return new Date(y, m-1, da, hh, mm, 0, 0);
+  }
+  function fmtTime(dt){
+    return pad(dt.getHours())+":"+pad(dt.getMinutes());
+  }
+  function fmtDate(dt){
+    return pad(dt.getDate())+"."+pad(dt.getMonth()+1)+"."+dt.getFullYear();
+  }
+  function toast(msg){
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.style.display = "block";
+    clearTimeout(window.__toastT);
+    window.__toastT = setTimeout(()=> t.style.display="none", 1800);
+  }
+
+  // UI refs
+  const listEl = document.getElementById("list");
+  const emptyEl = document.getElementById("empty");
+  const countEl = document.getElementById("count");
+
+  const dayEl = document.getElementById("day");
+  const todayBtn = document.getElementById("today");
+
+  const modalWrap = document.getElementById("modalWrap");
+  const openAdd = document.getElementById("openAdd");
+  const openAdd2 = document.getElementById("openAdd2");
+  const closeModal = document.getElementById("closeModal");
+  const modalTitle = document.getElementById("modalTitle");
+
+  const inpName = document.getElementById("inpName");
+  const inpDate = document.getElementById("inpDate");
+  const inpTime = document.getElementById("inpTime");
+  const inpNote = document.getElementById("inpNote");
+  const svcHint = document.getElementById("svcHint");
+  const calcEl = document.getElementById("calc");
+  const saveBtn = document.getElementById("saveBtn");
+  const deleteBtn = document.getElementById("deleteBtn");
+
+  let draft = { id:null, svc:null, min:null };
+
+  function openModal(editItem=null){
+    draft = { id: editItem?.id || null, svc: editItem?.svc || null, min: editItem?.min || null };
+    modalTitle.textContent = editItem ? "Uredi termin" : "Novi termin";
+    deleteBtn.style.display = editItem ? "inline-flex" : "none";
+    inpName.value = editItem?.name || "";
+    inpNote.value = editItem?.note || "";
+    const now = new Date();
+    inpDate.value = editItem ? editItem.date : toISODate(now);
+    inpTime.value = editItem ? editItem.time : (pad(now.getHours())+":"+pad(Math.floor(now.getMinutes()/15)*15));
+    highlightSvc();
+    recalc();
+    modalWrap.style.display = "flex";
+    inpName.focus();
+  }
+  function close(){
+    modalWrap.style.display = "none";
+  }
+
+  function highlightSvc(){
+    const btns = document.querySelectorAll(".sbtn");
+    btns.forEach(b=>{
+      const svc = b.dataset.svc;
+      if(draft.svc === svc){
+        b.classList.add("primary");
+        b.classList.add("pill");
+      }else{
+        b.classList.remove("primary");
+        b.classList.remove("pill");
+      }
+    });
+    svcHint.textContent = draft.svc ? ("Izabrano: " + draft.svc) : "Izaberi uslugu.";
+  }
+
+  function recalc(){
+    if(!draft.svc || !draft.min || !inpDate.value || !inpTime.value){
+      calcEl.textContent = "Kraj: —";
+      return;
+    }
+    const start = parseDateTime(inpDate.value, inpTime.value);
+    const end = new Date(start.getTime() + draft.min*60000);
+    calcEl.textContent = "Kraj: " + fmtTime(end);
+  }
+
+  function render(){
+    const all = loadAll();
+    const day = dayEl.value || toISODate(new Date());
+    const items = all.filter(x => x.date === day).sort((a,b)=> (a.time.localeCompare(b.time)));
+    listEl.innerHTML = "";
+    countEl.textContent = items.length + (items.length===1 ? " termin" : " termina");
+    emptyEl.style.display = items.length ? "none" : "block";
+
+    items.forEach(item=>{
+      const start = parseDateTime(item.date, item.time);
+      const end = new Date(start.getTime() + (item.min||0)*60000);
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `
+        <div class="top">
+          <div>
+            <div class="name">${escapeHtml(item.name || "Bez imena")}</div>
+            <div class="meta">${fmtDate(start)} • ${escapeHtml(item.svc)} • ${fmtTime(start)}–${fmtTime(end)}</div>
+            ${item.note ? `<div class="meta" style="margin-top:6px;">📝 ${escapeHtml(item.note)}</div>` : ``}
+          </div>
+          <div class="actions">
+            <button class="btn small" data-act="edit">Uredi</button>
+            <button class="btn small danger" data-act="del">Obriši</button>
+          </div>
+        </div>
+      `;
+      card.querySelector('[data-act="edit"]').onclick = ()=> openModal(item);
+      card.querySelector('[data-act="del"]').onclick = ()=> {
+        if(confirm("Obrisati termin?")){
+          const next = all.filter(x=> x.id !== item.id);
+          saveAll(next);
+          toast("Obrisano");
+          render();
+        }
+      }
+      listEl.appendChild(card);
+    });
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, (c)=>({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    }[c]));
+  }
+
+  // Events
+  openAdd.onclick = ()=> openModal();
+  openAdd2.onclick = ()=> openModal();
+  closeModal.onclick = close;
+  modalWrap.addEventListener("click", (e)=>{ if(e.target === modalWrap) close(); });
+
+  todayBtn.onclick = ()=> { dayEl.value = toISODate(new Date()); render(); };
+
+  inpDate.onchange = recalc;
+  inpTime.onchange = recalc;
+
+  document.querySelectorAll(".sbtn").forEach(btn=>{
+    btn.onclick = ()=>{
+      draft.svc = btn.dataset.svc;
+      draft.min = Number(btn.dataset.min);
+      highlightSvc();
+      recalc();
+    };
+  });
+
+  saveBtn.onclick = ()=>{
+    if(!inpDate.value || !inpTime.value){ toast("Unesi datum i vrijeme"); return; }
+    if(!draft.svc || !draft.min){ toast("Izaberi uslugu"); return; }
+
+    const all = loadAll();
+    const item = {
+      id: draft.id || uid(),
+      name: (inpName.value || "").trim(),
+      date: inpDate.value,
+      time: inpTime.value,
+      svc: draft.svc,
+      min: draft.min,
+      note: (inpNote.value || "").trim()
+    };
+
+    // Prevent overlap (single chair)
+    const start = parseDateTime(item.date, item.time);
+    const end = new Date(start.getTime() + item.min*60000);
+    const clash = all.some(x=>{
+      if(x.id === item.id) return false;
+      if(x.date !== item.date) return false;
+      const s2 = parseDateTime(x.date, x.time);
+      const e2 = new Date(s2.getTime() + (x.min||0)*60000);
+      return (start < e2) && (end > s2);
+    });
+    if(clash){
+      toast("Termin se preklapa");
+      return;
+    }
+
+    const next = all.filter(x=> x.id !== item.id);
+    next.push(item);
+    saveAll(next);
+    toast("Sačuvano");
+    close();
+    render();
+  };
+
+  deleteBtn.onclick = ()=>{
+    const all = loadAll();
+    if(!draft.id) return;
+    if(confirm("Obrisati termin?")){
+      saveAll(all.filter(x=> x.id !== draft.id));
+      toast("Obrisano");
+      close();
+      render();
+    }
+  };
+
+  // Export/Import
+  document.getElementById("export").onclick = ()=>{
+    const data = JSON.stringify(loadAll(), null, 2);
+    const blob = new Blob([data], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "barbershop-termini-backup.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  const importFile = document.getElementById("importFile");
+  document.getElementById("import").onclick = ()=> importFile.click();
+  importFile.onchange = async ()=>{
+    const file = importFile.files?.[0];
+    if(!file) return;
+    try{
+      const txt = await file.text();
+      const parsed = JSON.parse(txt);
+      if(!Array.isArray(parsed)) throw new Error("bad");
+      saveAll(parsed);
+      toast("Uvezeno");
+      render();
+    }catch{
+      toast("Neispravan fajl");
+    }finally{
+      importFile.value = "";
+    }
+  };
+
+  // init day
+  dayEl.value = toISODate(new Date());
+  dayEl.onchange = render;
+
+  // service worker
+  if("serviceWorker" in navigator){
+    window.addEventListener("load", ()=> navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+  }
+
+  render();
+</script>
+</body>
+</html>
